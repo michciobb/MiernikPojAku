@@ -1,0 +1,2 @@
+# MiernikPojAku
+Miernik pojemności akumulatorów
