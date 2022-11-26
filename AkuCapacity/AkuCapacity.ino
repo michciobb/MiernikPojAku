@@ -13,6 +13,8 @@
 #include "DFRobot_INA219.h"
 #include "SSD1306Wire.h"
 
+#define RELAY_PIN 0
+
 // Initialize the OLED display using Arduino Wire:
 SSD1306Wire display(0x3c, SDA, SCL);   // SDA jest pod IO8, SCL jest  pod IO9, ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
 
@@ -54,8 +56,8 @@ void setup() {
   //Open the serial port
   while(!Serial);
 
-  pinMode(10, OUTPUT);
-  digitalWrite(10, HIGH);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);
   
   Serial.println();
   //Initialize the sensor
@@ -83,11 +85,11 @@ void loop() {
     display.clear();
 
     voltage = ina219.getBusVoltage_V();
-    current = ina219.getCurrent_mA();
+    current = -ina219.getCurrent_mA();
 
-    if (voltage < 7.1) {
+    if (voltage < 11.1) {
       measurmentFlag = false;
-      digitalWrite(10, LOW);
+      digitalWrite(RELAY_PIN, LOW);
     }
     
 
