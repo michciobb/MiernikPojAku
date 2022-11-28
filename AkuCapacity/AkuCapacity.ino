@@ -9,14 +9,52 @@
  *@url https://github.com/DFRobot/DFRobot_INA219
 */
 
+#include <SPI.h>
 #include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include "DFRobot_INA219.h"
-#include "SSD1306Wire.h"
+//#include "SSD1306Wire.h"
 
-#define RELAY_PIN 0
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+//#define USE_SERIAL
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+// The pins for I2C are defined by the Wire-library. 
+// On an arduino UNO:       A4(SDA), A5(SCL)
+// On an arduino MEGA 2560: 20(SDA), 21(SCL)
+// On an arduino LEONARDO:   2(SDA),  3(SCL), ...
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32 - mój LCD duży działa z adresem 0x3C
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define LOGO_HEIGHT   16
+#define LOGO_WIDTH    16
+static const unsigned char PROGMEM logo_bmp[] =
+{ 0b00000000, 0b11000000,
+  0b00000001, 0b11000000,
+  0b00000001, 0b11000000,
+  0b00000011, 0b11100000,
+  0b11110011, 0b11100000,
+  0b11111110, 0b11111000,
+  0b01111110, 0b11111111,
+  0b00110011, 0b10011111,
+  0b00011111, 0b11111100,
+  0b00001101, 0b01110000,
+  0b00011011, 0b10100000,
+  0b00111111, 0b11100000,
+  0b00111111, 0b11110000,
+  0b01111100, 0b11110000,
+  0b01110000, 0b01110000,
+  0b00000000, 0b00110000 };
+
+#define RELAY_PIN 10
 
 // Initialize the OLED display using Arduino Wire:
-SSD1306Wire display(0x3c, SDA, SCL);   // SDA jest pod IO8, SCL jest  pod IO9, ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
+//SSD1306Wire display(0x3c, SDA, SCL);   // SDA jest pod IO8, SCL jest  pod IO9, ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
+
 
 
 /**
@@ -51,10 +89,60 @@ int dischargingTime_sec_ = 0;
 float batCapacity = 0;
 bool measurmentFlag = 1;
 
+void drawString(int x, int y, char* buf){
+  display.setCursor(x, y);     // Start at top-left corner
+  display.print(buf);
+
+}
+
 void setup() {
-  Serial.begin(115200);
-  //Open the serial port
-  while(!Serial);
+  #if defined (USE_SERIAL)
+    Serial.begin(115200);
+    //Open the serial port
+    while(!Serial);
+  #endif
+
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) 
+    #if defined (USE_SERIAL) 
+      Serial.println(F("SSD1306 allocation failed"));
+      for(;;); // Don't proceed, loop forever
+    #endif
+
+
+  display.clearDisplay();
+
+  display.setTextSize(1);      // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.setCursor(0, 0);     // Start at top-left corner
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+
+
+  // Show initial display buffer contents on the screen --
+  // the library initializes this with an Adafruit splash screen.
+  display.display();
+  delay(2000); // Pause for 2 seconds
+
+  // Clear the buffer
+  display.clearDisplay();
+
+  // Draw a single pixel in white
+  display.drawPixel(10, 10, SSD1306_WHITE);
+
+  // Show the display buffer on the screen. You MUST call display() after
+  // drawing commands to make them visible on screen!
+  display.display();
+  delay(2000);
+
+
+  display.clearDisplay();
+
+  display.setTextSize(2);      // Normal 1:1 pixel scale
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.setCursor(0, 0);     // Start at top-left corner
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+
+ 
 
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH);
@@ -62,61 +150,76 @@ void setup() {
   Serial.println();
   //Initialize the sensor
   while(ina219.begin() != true) {
-      Serial.println("INA219 begin faild");
+      #if defined (USE_SERIAL) 
+        Serial.println("INA219 begin faild");
+      #endif
       delay(2000);
   }
   //Linear calibration
   ina219.linearCalibrate(/*The measured current before calibration*/ina219Reading_mA, /*The current measured by other current testers*/extMeterReading_mA);
-  Serial.println();
+  #if defined (USE_SERIAL) 
+    Serial.println();
+  #endif
 
-  // Initialising the UI will init the display too.
-  display.init();
-  display.clear();
-
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_16);// były też _10 i _16 i _24
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
 }
 
 void loop() {
   
 
   if ((millis() - lastTime) > timerDelay) {
-    display.clear();
+    display.clearDisplay();
 
-    voltage = ina219.getBusVoltage_V();
+    voltage = ina219.getBusVoltage_V() + 1.2; //1.2V spadek na dwóch diodach prostowniczych
     current = -ina219.getCurrent_mA();
+
+    //uwzględniamy nieliniowość mostka Gretza
+    voltage +=(current * 0.5) / 1000;
 
     if (voltage < 11.1) {
       measurmentFlag = false;
       digitalWrite(RELAY_PIN, LOW);
     }
     
+    #if defined (USE_SERIAL)
+      Serial.print("BusVoltage:   ");
+      Serial.println(voltage, 2);
 
-    //Serial.print("BusVoltage:   ");
-    //Serial.println(voltage, 2);
+      Serial.print("BusCurrent:   ");
+      Serial.println(current, 4);
+      Serial.println("");
+    #endif
 
     char buff[10];
     sprintf(buff, "%.2f V", voltage);
-    display.drawString(80, 0, buff);
+
+    drawString(30, 0, buff);
 
     sprintf(buff, "%.0f mA", current);
-    display.drawString(100, 16, buff);
+    drawString(30, 16, buff);
+
+
 
 
     char timeBuff[10];
     int mins = dischargingTime_sec_/60;                                        //Number of seconds in an hour
     int sec = (dischargingTime_sec_-mins*60);                                             //Remove the number of hours and calculate the minutes.
-    sprintf(timeBuff, "%d:%02d", mins, sec);                               //formatowanie teksyu 0:00
-    display.drawString(110,32,timeBuff);
+    if (measurmentFlag){
+      sprintf(timeBuff, "ON   %d:%02d", mins, sec);                               //formatowanie teksyu 0:00
+    }
+    else{
+      sprintf(timeBuff, "OFF  %d:%02d", mins, sec);
+    }  
+    drawString(8,32,timeBuff);
 
 
     
     if (measurmentFlag) batCapacity += current / 3600;
     sprintf(buff, "%.0f mAh", batCapacity);
-    display.drawString(120, 48, buff);
+    drawString(0, 48, buff);
 
-    if (measurmentFlag) display.drawString(50, 32, "ON"); else  display.drawString(50, 32, "OFF");
+    //if (measurmentFlag) drawString(0, 32, "ON"); else  drawString(0, 32, "OFF");
+
+    
 
     display.display();
 
