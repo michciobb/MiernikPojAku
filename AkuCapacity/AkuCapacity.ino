@@ -13,6 +13,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans9pt7b.h>
 #include "DFRobot_INA219.h"
 //#include "SSD1306Wire.h"
 
@@ -112,36 +113,21 @@ void setup() {
 
   display.clearDisplay();
 
-  display.setTextSize(1);      // Normal 1:1 pixel scale
+  //display.setTextSize(1);      // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE); // Draw white text
   display.setCursor(0, 0);     // Start at top-left corner
   display.cp437(true);         // Use full 256 char 'Code Page 437' font
+  display.setFont(&FreeSans9pt7b);
 
-
-  // Show initial display buffer contents on the screen --
-  // the library initializes this with an Adafruit splash screen.
-  display.display();
-  delay(2000); // Pause for 2 seconds
-
-  // Clear the buffer
-  display.clearDisplay();
-
-  // Draw a single pixel in white
-  display.drawPixel(10, 10, SSD1306_WHITE);
-
-  // Show the display buffer on the screen. You MUST call display() after
-  // drawing commands to make them visible on screen!
-  display.display();
-  delay(2000);
 
 
   display.clearDisplay();
-
+/*
   display.setTextSize(2);      // Normal 1:1 pixel scale
   display.setTextColor(SSD1306_WHITE); // Draw white text
   display.setCursor(0, 0);     // Start at top-left corner
   display.cp437(true);         // Use full 256 char 'Code Page 437' font
-
+*/
  
 
   pinMode(RELAY_PIN, OUTPUT);
@@ -189,13 +175,13 @@ void loop() {
       Serial.println("");
     #endif
 
-    char buff[10];
-    sprintf(buff, "%.2f V", voltage);
+    char buff[13];
+    sprintf(buff, "%9.2f V", voltage);
 
-    drawString(30, 0, buff);
+    drawString(0, 15, buff);
 
     sprintf(buff, "%.0f mA", current);
-    drawString(30, 16, buff);
+    drawString(30, 31, buff);
 
 
 
@@ -204,18 +190,18 @@ void loop() {
     int mins = dischargingTime_sec_/60;                                        //Number of seconds in an hour
     int sec = (dischargingTime_sec_-mins*60);                                             //Remove the number of hours and calculate the minutes.
     if (measurmentFlag){
-      sprintf(timeBuff, "ON  %d:%02d", mins, sec);                               //formatowanie teksyu 0:00
+      sprintf(timeBuff, "ON     %d:%02d", mins, sec);                               //formatowanie teksyu 0:00
     }
     else{
-      sprintf(timeBuff, "OFF %d:%02d", mins, sec);
+      sprintf(timeBuff, "OFF    %d:%02d", mins, sec);
     }  
-    drawString(0,32,timeBuff);
+    drawString(0,47,timeBuff);
 
 
     
     if (measurmentFlag) batCapacity += current / 3600;
-    sprintf(buff, "%.0f mAh", batCapacity);
-    drawString(0, 48, buff);
+    sprintf(buff, "%04.0f mAh", batCapacity);
+    drawString(0, 63, buff);
 
     //if (measurmentFlag) drawString(0, 32, "ON"); else  drawString(0, 32, "OFF");
 
