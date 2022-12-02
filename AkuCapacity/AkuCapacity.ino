@@ -204,12 +204,12 @@ void loop() {
     int mins = dischargingTime_sec_/60;                                        //Number of seconds in an hour
     int sec = (dischargingTime_sec_-mins*60);                                             //Remove the number of hours and calculate the minutes.
     if (measurmentFlag){
-      sprintf(timeBuff, "ON   %d:%02d", mins, sec);                               //formatowanie teksyu 0:00
+      sprintf(timeBuff, "ON  %d:%02d", mins, sec);                               //formatowanie teksyu 0:00
     }
     else{
-      sprintf(timeBuff, "OFF  %d:%02d", mins, sec);
+      sprintf(timeBuff, "OFF %d:%02d", mins, sec);
     }  
-    drawString(8,32,timeBuff);
+    drawString(0,32,timeBuff);
 
 
     
